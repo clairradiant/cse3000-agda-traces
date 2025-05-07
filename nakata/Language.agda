@@ -4,6 +4,7 @@ open import Data.Nat.Properties using (_≟_)
 open import Relation.Nullary.Decidable
 open import Data.Bool using (Bool)
 open import Traces
+open import Function.Base using (case_of_)
 
 module Language where
     Expr : Set
@@ -27,8 +28,4 @@ module Language where
         Swhile : Expr → Stmt → Stmt
 
     update : Id → Val → State → State
-    update x v st with (st x) ≟ v
-    ... | yes _ = λ y → v
-    ... | no _ = λ y → st y
-
-    
+    update x v st  = λ y → case (x ≟ y) of λ {(yes _) → v ; (no _) → st y}
