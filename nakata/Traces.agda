@@ -44,6 +44,32 @@ module Traces where
         tnil : ∀ {st} → (tnil st) ≈ (tnil st)
         tcons : ∀ {e tr₁ tr₂} → ∞ (♭ tr₁ ≈ ♭ tr₂) → (tcons e tr₁) ≈ (tcons e tr₂)
 
+    setoid₁ : Setoid Level.zero Level.zero
+    setoid₁ = record
+        { Carrier = Trace₁
+        ; _≈_ = _≈_
+        ; isEquivalence = record
+            {   refl = refl
+            ;   sym = sym
+            ;   trans = trans
+            }
+        }
+        where
+            refl : Reflexive _≈_
+            refl {tnil x} = tnil
+            refl {tcons x x₁} = tcons (♯ refl)
+
+            sym : Symmetric _≈_
+            sym tnil = tnil
+            sym (tcons x) = tcons (♯ sym (♭ x))
+
+            trans : Transitive _≈_
+            trans tnil tnil = tnil
+            trans (tcons x) (tcons x₁) = tcons (♯ trans (♭ x) ((♭ x₁)))
+
+
+
+
     {-# NON_TERMINATING #-}
     force : Trace₁ → FiniteTrace
     force (tnil st) = tnil st
