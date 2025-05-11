@@ -25,7 +25,7 @@ module BigRel where
             execSkip : ∀ (st) 
                 → exec Sskip st (tnil st)
 
-            execAssign : ∀ (id) (a) (st) (tr : ∞ Trace₁)
+            execAssign : ∀ (id) (a) (st)
                 → exec (Sassign id a) st (tcons st (♯ tnil (update id (a st) st)))
 
             execSeq : (s₁ s₂ : Stmt) (st : State) (tr tr′ : Trace₁) 
@@ -62,14 +62,14 @@ module BigRel where
                 → execseq s tr tr′ 
                 → execseq s (tcons st (♯ tr)) (tcons st (♯ tr′))
 
-    -- add1 : Expr
-    -- add1 x = x 0 + 1
+    add1 : Expr
+    add1 x = x 0 + 1
 
-    -- startState : State
-    -- startState = λ {0 → 0 ; _ → 42}
+    startState : State
+    startState = λ {0 → 0 ; _ → 42}
 
-    -- ex : exec (Sassign 0 add1) startState {! (tcons startState (♯ tnil (update 0 (add1 startState) startState)))  !}
-    -- ex = execAssign 0 add1 startState
+    ex : exec (Sassign 0 add1) startState (tcons startState {!   !})
+    ex = execAssign 0 add1 startState
 
     -- ex1 : Stmt
     -- ex1 = Sseq (Sassign 0 add1) (Sassign 0 add1)

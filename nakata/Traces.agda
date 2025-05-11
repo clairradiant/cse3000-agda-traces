@@ -67,9 +67,7 @@ module Traces where
             trans tnil tnil = tnil
             trans (tcons x) (tcons x₁) = tcons (♯ trans (♭ x) ((♭ x₁)))
 
-
-
-
+    -- Functions for forcing a trace to a non-coinductive trace or the trace's final state
     {-# NON_TERMINATING #-}
     force : Trace₁ → FiniteTrace
     force (tnil st) = tnil st
