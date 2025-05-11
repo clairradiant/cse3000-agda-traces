@@ -7,6 +7,7 @@ open import Data.Nat using (ℕ; zero; suc)
 open import Function.Base using (case_of_)
 open import Data.Nat using (_+_)
 open import Relation.Nullary using (contradiction)
+open import Relation.Binary.Bundles using (Setoid)
 
 open import Traces
 open import Language
@@ -25,8 +26,9 @@ module BigRel where
             execSkip : ∀ (st) 
                 → exec Sskip st (tnil st)
 
-            execAssign : ∀ (id) (a) (st)
-                → exec (Sassign id a) st (tcons st (♯ tnil (update id (a st) st)))
+            execAssign : ∀ (id) (a) (st) (tr)
+                → tr ≈ (tcons st (♯ tnil (update id (a st) st)))
+                → exec (Sassign id a) st tr
 
             execSeq : (s₁ s₂ : Stmt) (st : State) (tr tr′ : Trace₁) 
                 → exec s₁ st tr 
@@ -43,9 +45,10 @@ module BigRel where
                 → execseq e (tcons st (♯ tnil st)) tr 
                 → exec (Sifthenelse c t e) st tr
 
-            execWhileFalse : (c : Expr) (b : Stmt) (st : State) 
-                → isTrue (c st) ≡ false 
-                → exec (Swhile c b) st (tcons st (♯ tcons st (♯ tnil st)))
+            execWhileFalse : (c : Expr) (b : Stmt) (st : State) (tr : Trace₁)
+                → isTrue (c st) ≡ false
+                → tr ≈ (tcons st (♯ tcons st (♯ tnil st)))
+                → exec (Swhile c b) st tr
 
             execWhileLoop : (c : Expr) (b : Stmt) (st : State) (tr tr′ : Trace₁) 
                 → (isTrue (c st)) ≡ true 
@@ -58,9 +61,9 @@ module BigRel where
                 → exec s st tr 
                 → execseq s (tnil st) tr
                 
-            execseqCons : (st : State) (s : Stmt) (tr tr′ : Trace₁) 
-                → execseq s tr tr′ 
-                → execseq s (tcons st (♯ tr)) (tcons st (♯ tr′))
+            execseqCons : (st : State) (s : Stmt) (tr tr′ : ∞ Trace₁) 
+                → execseq s (♭ tr) (♭ tr′) 
+                → execseq s (tcons st tr) (tcons st tr′)
 
     add1 : Expr
     add1 x = x 0 + 1
@@ -68,8 +71,8 @@ module BigRel where
     startState : State
     startState = λ {0 → 0 ; _ → 42}
 
-    ex : exec (Sassign 0 add1) startState (tcons startState {!   !})
-    ex = execAssign 0 add1 startState
+    ex : exec (Sassign 0 add1) startState (tcons startState (♯ (tnil (update 0 (add1 startState) startState))))
+    ex = execAssign _ _ _ _ (tcons (♯ tnil))
 
     -- ex1 : Stmt
     -- ex1 = Sseq (Sassign 0 add1) (Sassign 0 add1)
@@ -105,12 +108,12 @@ module BigRel where
         → {st : State} {tr₁ tr₂ : Trace₁} → exec (Sseq s₁ s₂) st tr₁ → exec (Sseq s₁ s₂) st tr₂ → tr₁ ≈ tr₂
     execSeqDeterministic₀ h₁ h₂ (execSeq _ _ _ tr _ x₁ x) (execSeq _ _ _ tr₁ _ x₂ x₃) = execseqDeterministic₀ h₂ (h₁ x₁ x₂) x x₃
 
+            
     execWhileDeterministic₀ : {c : Expr} {b : Stmt} → ({st : State} {tr₁ tr₂ : Trace₁} → (exec b st tr₁ → exec b st tr₂ → tr₁ ≈ tr₂))
         → {st : State} {tr₁ tr₂ : Trace₁} → exec (Swhile c b) st tr₁ → exec (Swhile c b) st tr₂ → tr₁ ≈ tr₂
-    execWhileDeterministic₀ x (execWhileFalse _ _ _ x₁) (execWhileFalse _ _ _ x₂) = tcons (♯ tcons (♯ tnil))
-    execWhileDeterministic₀ x (execWhileFalse _ _ _ x₁) (execWhileLoop _ _ _ tr _ x₂ x₃ x₄) rewrite x₁ = contradiction x₂ λ ()
-    execWhileDeterministic₀ x (execWhileLoop _ _ _ tr _ x₁ x₃ x₄) (execWhileFalse _ _ _ x₂) rewrite x₁ = contradiction x₂ λ ()
-    execWhileDeterministic₀ x (execWhileLoop _ _ _ tr _ x₁ x₃ x₄) (execWhileLoop _ _ _ tr₁ _ x₂ x₅ x₆) = {!   !}
-        where
-            execWhileDeterministic₁ : {!   !}
+    execWhileDeterministic₀ x (execWhileFalse _ _ _ _ x₁ x₂) (execWhileFalse _ _ _ _ x₃ x₄) = {!    !}
+    execWhileDeterministic₀ x (execWhileFalse _ _ _ _ x₁ x₂) (execWhileLoop _ _ _ _ _ x₃ x₄ x₅) rewrite x₁ = contradiction x₃ (λ ())
+    execWhileDeterministic₀ x (execWhileLoop _ _ _ tr _ x₁ x₂ x₃) (execWhileFalse _ _ _ _ x₄ x₅) rewrite x₁ = contradiction x₄ λ ()
+    execWhileDeterministic₀ x (execWhileLoop _ _ _ tr _ x₁ x₂ x₃) (execWhileLoop _ _ _ tr₁ _ x₄ x₅ x₆) = {!   !}
 
+  
