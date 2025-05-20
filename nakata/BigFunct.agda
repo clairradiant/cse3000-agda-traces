@@ -4,7 +4,9 @@ open import Traces
 open import Language
 open import Data.Bool using (Bool; true; false)
 open import Codata.Musical.Notation
-open import Data.Nat
+open import Data.Nat using (ℕ; zero; suc; _<?_; _+_)
+open import Function.Base using (case_of_)
+open import Relation.Nullary.Decidable
 
 module BigFunct where
     loop : (State → Trace₁) → (State → Bool) → State → Trace₁
@@ -45,3 +47,19 @@ module BigFunct where
 
     ex₂ : Trace₁
     ex₂ = exec prog₂ λ {0 → 0 ; _ → 42}
+
+
+    add1 : Expr
+    add1 x = x 0 + 1
+
+    lt2 : Expr
+    lt2 x  = case x 0 <? 2 of λ {(yes _) → 1 ; (no _) → 0}
+
+    startState : State
+    startState = λ {0 → 0 ; _ → 42}
+
+    prog₃ : Stmt
+    prog₃ = Swhile lt2 (Sassign 0 add1)
+
+    ex₃ : Trace₁
+    ex₃ = exec prog₃ startState
