@@ -9,12 +9,14 @@ open import Data.Nat using (_+_)
 open import Relation.Nullary using (contradiction)
 open import Relation.Nullary.Decidable
 open import Relation.Binary.Bundles using (Setoid)
+open import Data.Maybe using (Maybe; nothing; just)
 open import Data.Product
+open import Data.Sum
 
 open import Traces
 open import Language
 
-open Trace₂
+open Trace₃
 
 module BigRel2 where
     -- append : Trace₁ → Trace₁ → Trace₁
@@ -25,67 +27,51 @@ module BigRel2 where
     -- unwind (tnil st) = st
     -- unwind (tcons st t) = unwind (♭ t)
 
-    open Trace₂.Trace₂
+    open Trace₃.Trace₃
 
     mutual
-        data exec : (s : Stmt) → (st : State) → (tr : Trace₂) → Set where
+        data exec : (s : Stmt) → (st : State) → (tr : Trace₃) → Set where
             execSkip : {st : State}
-                → exec Sskip st (mkTr (tnil st))
+                → exec Sskip st (mkTr st nothing)
 
-            execAssign : {id : Id} {a : Expr} {st : State}
-                → exec (Sassign id a) st (mkTr (tcons st (mkTr (tnil (update id (a st) st)))))
+            execAssign : {id : Id} {a : Expr} {st : State} {tr : Trace₃}
+                → exec (Sassign id a) st (mkTr st (just (mkTr (update id (a st) st) nothing)))
 
-            execSeq : {s₁ s₂ : Stmt} {st : State} (tr tr′ : Trace₂) 
+            execSeq : {s₁ s₂ : Stmt} {st : State} (tr tr′ : Trace₃) 
                 → exec s₁ st tr 
-                → execseq s₂ tr tr′ 
+                → execseq s₂ tr tr′
                 → exec (Sseq s₁ s₂) st tr′
 
-            execIfThenElseTrue : {c : Expr} {t : Stmt} {st : State} {tr : Trace₂} (e : Stmt)  
+            execIfThenElseTrue : {c : Expr} {t : Stmt} {st : State} {tr : Trace₃} (e : Stmt)  
                 → isTrue (c st) ≡ true 
-                → execseq t ((mkTr (tcons st (mkTr (tnil st))))) tr 
+                → execseq t (mkTr st (just (mkTr st nothing))) tr
                 → exec (Sifthenelse c t e) st tr
 
-            execIfThenElseFalse : {c : Expr} {e : Stmt} {st : State} {tr : Trace₂} (t : Stmt) 
+            execIfThenElseFalse : {c : Expr} {e : Stmt} {st : State} {tr : Trace₃} (t : Stmt) 
                 → isTrue (c st) ≡ false 
-                → execseq e ((mkTr (tcons st (mkTr (tnil st))))) tr 
+                → execseq e (mkTr st (just (mkTr st nothing))) tr
                 → exec (Sifthenelse c t e) st tr
 
-            execWhileFalse : {c : Expr} {st : State}
-                → (b : Stmt)
+            execWhileFalse : {c : Expr} {st : State} {tr : Trace₃} (b : Stmt)
                 → isTrue (c st) ≡ false
-                → exec (Swhile c b) st ((mkTr (tcons st (mkTr (tnil st)))))
+                → exec (Swhile c b) st (mkTr st (just (mkTr st nothing)))
 
-            execWhileLoop : {c : Expr} {b : Stmt} {st : State} (tr tr′ : Trace₂)
+            execWhileLoop : {c : Expr} {b : Stmt} {st : State} (tr tr′ : Trace₃)
                 → (isTrue (c st)) ≡ true 
-                → execseq b ((mkTr (tcons st (mkTr (tnil st))))) tr 
-                → execseq (Swhile c b) tr tr′ 
+                → execseq b (mkTr st (just (mkTr st nothing))) tr
+                → execseq (Swhile c b) tr tr′
                 → exec (Swhile c b) st tr′
 
-        -- postulate execseq : Stmt → Trace₂ → Trace₂ → Set
-
-        data rexecseq : Stmt → rTrace₂ → rTrace₂ → Set where
-            rexecseqNil : {st : State} {s : Stmt} {tr : Trace₂}
-                → exec s st tr
-                → rexecseq s (tnil st) (out tr)
-
-            rexecseqCons : (s : Stmt) (st : State) (tr tr′ : Trace₂)
-                → execseq s tr tr′
-                → rexecseq s (tcons st tr) (tcons st tr′)
-
-        record execseq (s : Stmt) (tr tr′ : Trace₂) : Set where
+        record execseq (s : Stmt) (tr₁ tr₂ : Trace₃) : Set where
             coinductive
-            constructor mkExecseq
             field
-                p : rexecseq s (out tr) (out tr′)
-
-        -- data execseq : Stmt → Trace₁ → Trace₁ → Set where
-        --     execseqNil : {st : State} {s : Stmt} {tr : Trace₁} 
-        --         → exec s st tr 
-        --         → execseq s (tnil st) tr
-                
-        --     execseqCons : {s : Stmt} (st : State) (tr tr′ : ∞ Trace₁) 
-        --         → ∞ (execseq s (♭ tr) (♭ tr′)) 
-        --         → execseq s (tcons st tr) (tcons st tr′)
+                p :
+                    ∃ (λ st → (tr₁ ≈ mkTr st nothing) × (exec s st tr₂)) -- "nil" case
+                    ⊎
+                    ∃ {A = State × (Trace₃ × Trace₃)} λ (st , (tr₃ , tr₄)) → -- "cons" case
+                            ((tr₁ ≈ mkTr st ((just tr₃))) × (tr₂ ≈ mkTr st (just tr₄))) 
+                        × 
+                            execseq s tr₃ tr₄
 
     add1 : Expr
     add1 x = x 0 + 1
@@ -93,8 +79,40 @@ module BigRel2 where
     startState : State
     startState = λ {0 → 0 ; _ → 42}
 
-    -- ex : exec (Sassign 0 add1) startState (tcons startState (♯ (tnil (update 0 (add1 startState) startState))))
-    -- ex = execAssign (tcons (♯ tnil))
+    next : State → State
+    next st = update 0 (add1 st) st
+
+    -- open Trace₂.Trace₂
+
+    -- Record of what didn't work
+    -- incrementingFrom : State → Trace₂
+    -- incrementingFrom st .t = just (st , (incrementingFrom (next st)))
+
+    -- incrementing : Trace₂
+    -- incrementing = incrementingFrom startState
+
+    -- test : incrementing ≈ incrementing
+    -- test = tcons _≡_.refl _≡_.refl {!   !}
+
+    open Trace₃.Trace₃
+
+    incrementingFrom : State → Trace₃
+    incrementingFrom st .hd = st
+    incrementingFrom st .tl = just (incrementingFrom (next st))
+
+    incrementing : Trace₃
+    incrementing = incrementingFrom startState
+
+    test : incrementing ≈ incrementing
+    test = forever startState
+        where
+        forever : (st : State) → (incrementingFrom st) ≈ (incrementingFrom st)
+        forever st ._≈_.hd = _≡_.refl
+        forever st ._≈_.tl = inj₂ (((incrementingFrom (next st)) , (incrementingFrom (next st))) , 
+            (_≡_.refl , (_≡_.refl , (forever (next st)))))
+
+
+    -- ex : exec (Sassign 0 add1) startState ?
 
     -- module exloop where
     --     -- Is the variable at location 0 less than 2 in the given state?
@@ -156,21 +174,15 @@ module BigRel2 where
 
     --     loopforevertrace : Trace₁
     --     loopforevertrace = tcons startState (♯ loopforevertrace)
-
-    loopforevertrace : Trace₂
-    loopforevertrace .out = tcons startState loopforevertrace
         
-    -- Proof tree of a program that loops forever
-    exloopforever : exec (Swhile (λ _ → 1) Sskip) startState loopforevertrace
-    exloopforever = execWhileLoop 
-        (mkTr (tcons startState (mkTr (tnil startState))))
-        loopforevertrace 
-        _≡_.refl 
-        (mkExecseq (rexecseqCons _ _ _ _ (mkExecseq (rexecseqNil execSkip)))) 
-        proofforever
-        where
-            proofforever : execseq (Swhile (λ _ → 1) Sskip) (mkTr (tcons startState (mkTr (tnil startState)))) loopforevertrace
-            proofforever .execseq.p = rexecseqCons _ _ _ _ (mkExecseq (rexecseqNil exloopforever))
+    --     -- Proof tree of a program that loops forever
+    --     exloopforever : exec (Swhile (λ _ → 1) Sskip) startState loopforevertrace
+    --     exloopforever = execWhileLoop 
+    --         (tcons startState (♯ (tnil startState))) 
+    --         loopforevertrace
+    --         _≡_.refl 
+    --         (execseqCons _ _ _ (♯ execseqNil execSkip))
+    --         (execseqCons _ _ _ (♯ execseqNil exloopforever))
 
     --     next : State → State
     --     next st = update 0 (add1 st) st
@@ -195,11 +207,7 @@ module BigRel2 where
 
     --     -- increasing id v tr : In trace tr, variable at location id starts with value v and always increases by 1 after 2 applications of tcons (one application for guard checking, and one for reassignment)
     --     data increasing : Id → Val → Trace₁ → Set where
-    --         increasingCons : {id : Id} {v : Val} {st : State} {tr tr₁ : Trace₁} 
-    --             → st id ≡ v 
-    --             → tr₁ ≈ tcons st (♯ (tcons st (♯ tr))) 
-    --             → ∞ (increasing id (suc v) tr) 
-    --             → increasing id v tr₁
+    --         increasingCons : {id : Id} {v : Val} {st : State} {tr tr₁ : Trace₁} → st id ≡ v → tr₁ ≈ tcons st (♯ (tcons st (♯ tr))) → ∞ (increasing id (suc v) tr) → increasing id v tr₁
 
     --     incrementingAlwaysIncrements : increasing 0 0 incrementingtrace
     --     incrementingAlwaysIncrements = forever refl
@@ -253,62 +261,68 @@ module BigRel2 where
     --             (execseqCons _ _ _ (♯ (execseqCons _ _ _ (♯ (execseqNil (execIfThenElseFalse _ _≡_.refl (execseqCons _ _ _ (♯ (execseqNil (execAssign (tcons (♯ tnil)))))))))))))))) 
                 
 
-    mutual
-        rexecseqDeterministic₀ : {s : Stmt}
-            → ({st : State} {tr₁ tr₂ : Trace₂} → exec s st tr₁ → exec s st tr₂ → tr₁ ≈ tr₂) 
-            → ({tr₁ tr₂ tr₃ tr₄ : rTrace₂} → tr₁ r≈ tr₂ → rexecseq s tr₁ tr₃ → rexecseq s tr₂ tr₄ → tr₃ r≈ tr₄)
-        rexecseqDeterministic₀ x tnil (rexecseqNil x₂) (rexecseqNil x₄) = _≈_.p (x x₂ x₄)
-        rexecseqDeterministic₀ x (tcons a) (rexecseqCons _ st tr tr′ x₂) (rexecseqCons _ st₁ tr₁ tr′₁ x₃) = tcons (execseqDeterministic₀ x a x₂ x₃)
+            
 
-        execseqDeterministic₀ : {s : Stmt}
-            → ({st : State} {tr₁ tr₂ : Trace₂} → exec s st tr₁ → exec s st tr₂ → tr₁ ≈ tr₂) 
-            → ({tr₁ tr₂ tr₃ tr₄ : Trace₂} → tr₁ ≈ tr₂ → execseq s tr₁ tr₃ → execseq s tr₂ tr₄ → tr₃ ≈ tr₄)
-        execseqDeterministic₀ x x₁ x₂ x₃ ._≈_.p = rexecseqDeterministic₀ x (_≈_.p x₁) (execseq.p x₂) (execseq.p x₃)
-        -- execseqDeterministic₀ x {tr₁} {tr₂} x₁ x₂ x₃ ._≈_.p with out tr₁ in eq₁ | out tr₂ in eq₂ | (_≈_.p x₁) | (execseq.p x₂) | (execseq.p x₃) 
-        -- ... | tnil st | tnil st₁ | tnil | rexecseqNil a b | rexecseqNil c d = {!   !}
+    execseqDeterministic₀ : {s : Stmt}
+        → ({st : State} {tr₁ tr₂ : Trace₃} → exec s st tr₁ → exec s st tr₂ → tr₁ ≈ tr₂) 
+        → ({tr₁ tr₂ tr₃ tr₄ : Trace₃} → tr₁ ≈ tr₂ → execseq s tr₁ tr₃ → execseq s tr₂ tr₄ → tr₃ ≈ tr₄)
     -- execseqDeterministic₀ h tnil              (execseqNil ex₁)         (execseqNil ex₂)         = h ex₁ ex₂
     -- execseqDeterministic₀ h (tcons tr₁′≈tr₂′) (execseqCons _ _ _ tr₁⇒tr₃) (execseqCons _ _ _ tr₂⇒tr₄) = tcons (♯ execseqDeterministic₀ h (♭ tr₁′≈tr₂′) (♭ tr₁⇒tr₃) (♭ tr₂⇒tr₄))
+    execseqDeterministic₀ h {tr₁} {tr₂} {tr₃} {tr₄} a b c ._≈_.hd with (execseq.p b) | (execseq.p c)
+    ... | inj₁ (ab , abc , abcd) | inj₁ (bc , bcd , bcde) = 
+        let
+            t : hd tr₁ ≡ ab
+            t = _≈_.hd abc
 
-    execSeqDeterministic₀ : {s₁ s₂ : Stmt} 
-        → ({st : State} {tr₁ tr₂ : Trace₂} → exec s₁ st tr₁ → exec s₁ st tr₂ → tr₁ ≈ tr₂)
-        → ({st : State} {tr₁ tr₂ : Trace₂} → exec s₂ st tr₁ → exec s₂ st tr₂ → tr₁ ≈ tr₂)
-        → {st : State} {tr₁ tr₂ : Trace₂} → exec (Sseq s₁ s₂) st tr₁ → exec (Sseq s₁ s₂) st tr₂ → tr₁ ≈ tr₂
-    execSeqDeterministic₀ h₁ h₂ (execSeq _ _ ex₁ exseq₁) (execSeq _ _ ex₂ exseq₂) = execseqDeterministic₀ h₂ (h₁ ex₁ ex₂) exseq₁ exseq₂
+            t₂ : hd tr₂ ≡ bc
+            t₂ = _≈_.hd bcd
 
-    open Setoid setoid₂ using (refl; sym; trans)
+            t₃ : bc ≡ ab
+            t₃ = eqTrans (eqSym t₂) (eqTrans (eqSym (_≈_.hd a)) t)
+        in
+            _≈_.hd (h abcd (subst (λ x → exec _ x tr₄) t₃ bcde))
+    execseqDeterministic₀ h {tr₁} {tr₂} {tr₃} {tr₄} a b c ._≈_.tl with (_≈_.tl a) | (execseq.p b) | (execseq.p c)
+    ... | inj₂ ((aaa , aaaa) , (bbb , (bbbb , bbbbb))) | inj₂ ((ab , (abb , abbb)) , (abc , abcc) , abcd) | inj₂ (bc , bcd , bcde) = 
+        let
+            t = {!   !}
+        in
+            inj₂ ((tr₁ , tr₂) , ({!   !} , ({!   !} , {!   !})))
+    -- execseqDeterministic₀ h a b c ._≈_.tl with (_≈_.hd a) | (_≈_.tl a) | (execseq.p b) | (execseq.p c)
+    -- ... | aa | bb | inj₁ (fst , _ , ex₁) | inj₁ (fst2 , _ , ex₂) = h ex₁ {!   !}
+    -- ... | _ | _ | _ | _ = {!   !}
 
+    -- execSeqDeterministic₀ : {s₁ s₂ : Stmt} 
+    --     → ({st : State} {tr₁ tr₂ : Trace₁} → exec s₁ st tr₁ → exec s₁ st tr₂ → tr₁ ≈ tr₂)
+    --     → ({st : State} {tr₁ tr₂ : Trace₁} → exec s₂ st tr₁ → exec s₂ st tr₂ → tr₁ ≈ tr₂)
+    --     → {st : State} {tr₁ tr₂ : Trace₁} → exec (Sseq s₁ s₂) st tr₁ → exec (Sseq s₁ s₂) st tr₂ → tr₁ ≈ tr₂
+    -- execSeqDeterministic₀ h₁ h₂ (execSeq _ _ ex₁ exseq₁) (execSeq _ _ ex₂ exseq₂) = execseqDeterministic₀ h₂ (h₁ ex₁ ex₂) exseq₁ exseq₂
 
-    execWhileDeterministic₀ : {c : Expr} {b : Stmt} → ({st : State} {tr₁ tr₂ : Trace₂} → (exec b st tr₁ → exec b st tr₂ → tr₁ ≈ tr₂))
-        → {st : State} {tr₁ tr₂ : Trace₂} → exec (Swhile c b) st tr₁ → exec (Swhile c b) st tr₂ → tr₁ ≈ tr₂
-    execWhileDeterministic₀ _ (execWhileFalse _ _) (execWhileFalse _ _)                                     = refl 
-    execWhileDeterministic₀ _ (execWhileFalse _ c＝false)   (execWhileLoop _ _ c＝true _ _) rewrite c＝false = contradiction c＝true λ ()
-    execWhileDeterministic₀ _ (execWhileLoop _ _ c＝true _ _) (execWhileFalse _ c＝false)   rewrite c＝true  = contradiction c＝false λ ()
-    execWhileDeterministic₀ {c} {b} h {st} {tr₁} {tr₂} (execWhileLoop _ _ _ aa x₂) (execWhileLoop _ _ _ bb x₅) ._≈_.p = 
-        rexecWhileDeterministic₁ (_≈_.p (execseqDeterministic₀ h refl (aa) (bb))) (x₂ .execseq.p) (x₅ .execseq.p)
-        where
-            mutual
-                rexecWhileDeterministic₁ : {tr₁ tr₂ tr₃ tr₄ : rTrace₂} → tr₁ r≈ tr₂ → rexecseq (Swhile c b) tr₁ tr₃ → rexecseq (Swhile c b) tr₂ tr₄ → tr₃ r≈ tr₄
-                rexecWhileDeterministic₁ tnil aaa@(rexecseqNil x) bbb@(rexecseqNil x₁) = _≈_.p (execWhileDeterministic₀ h x x₁)
-                rexecWhileDeterministic₁ (tcons x) (rexecseqCons _ _ _ tr′ x₁) (rexecseqCons _ _ _ tr′₁ x₂) = tcons (execWhileDeterministic₁ x x₁ x₂)
+    -- open Setoid setoid₁ using (refl; sym; trans)
+            
+    -- execWhileDeterministic₀ : {c : Expr} {b : Stmt} → ({st : State} {tr₁ tr₂ : Trace₁} → (exec b st tr₁ → exec b st tr₂ → tr₁ ≈ tr₂))
+    --     → {st : State} {tr₁ tr₂ : Trace₁} → exec (Swhile c b) st tr₁ → exec (Swhile c b) st tr₂ → tr₁ ≈ tr₂
+    -- execWhileDeterministic₀ _ (execWhileFalse _ _ tr₁≈result) (execWhileFalse _ _ tr₂≈result)                 = trans tr₁≈result (sym tr₂≈result)
+    -- execWhileDeterministic₀ _ (execWhileFalse _ c＝false _)   (execWhileLoop _ _ c＝true _ _) rewrite c＝false = contradiction c＝true λ ()
+    -- execWhileDeterministic₀ _ (execWhileLoop _ _ c＝true _ _) (execWhileFalse _ c＝false _)   rewrite c＝true  = contradiction c＝false λ ()
+    -- execWhileDeterministic₀ {c} {b} h (execWhileLoop _ _ _ (execseqCons _ _ _ x₁) x₂) (execWhileLoop _ _ _ (execseqCons _ _ _ x₄) x₅) = execWhileDeterministic₁ (tcons (♯ execseqDeterministic₀ h refl (♭ x₁) (♭ x₄))) x₂ x₅
+    --     where
+    --         execWhileDeterministic₁ : {tr₁ tr₂ tr₃ tr₄ : Trace₁} → tr₁ ≈ tr₂ → execseq (Swhile c b) tr₁ tr₃ → execseq (Swhile c b) tr₂ tr₄ → tr₃ ≈ tr₄
+    --         execWhileDeterministic₁ tnil              (execseqNil ex₁)       (execseqNil ex₂)       = execWhileDeterministic₀ h ex₁ ex₂
+    --         execWhileDeterministic₁ (tcons tr₁′≈tr₂′) (execseqCons _ _ _ exseq₁) (execseqCons _ _ _ exseq₂) = tcons (♯ (execWhileDeterministic₁ (♭ tr₁′≈tr₂′) (♭ exseq₁) (♭ exseq₂)))
 
-                execWhileDeterministic₁ : {tr₁ tr₂ tr₃ tr₄ : Trace₂} → tr₁ ≈ tr₂ → execseq (Swhile c b) tr₁ tr₃ → execseq (Swhile c b) tr₂ tr₄ → tr₃ ≈ tr₄
-                execWhileDeterministic₁ x x₁ x₂ ._≈_.p = rexecWhileDeterministic₁ (_≈_.p x) (execseq.p x₁) (execseq.p x₂)
-                -- execWhileDeterministic₁ tnil              (execseqNil ex₁)       (execseqNil ex₂)       = execWhileDeterministic₀ h ex₁ ex₂
-                -- execWhileDeterministic₁ (tcons tr₁′≈tr₂′) (execseqCons _ _ _ exseq₁) (execseqCons _ _ _ exseq₂) = tcons (♯ (execWhileDeterministic₁ (♭ tr₁′≈tr₂′) (♭ exseq₁) (♭ exseq₂)))
-
-
+    
     -- execDeterministic : {s : Stmt} {st : State} {tr₁ tr₂ : Trace₁} 
     --     → exec s st tr₁ 
     --     → exec s st tr₂ 
     --     → tr₁ ≈ tr₂
-    -- execDeterministic execSkip                           execSkip                                           = refl
+    -- execDeterministic execSkip                              execSkip                                               = refl
     -- execDeterministic (execAssign tr₁≈result)            (execAssign tr₂≈result)                            = trans tr₁≈result (sym tr₂≈result)
-    -- execDeterministic l@(execSeq _ _ _ _)                r@(execSeq _ _ _ _)                                = execSeqDeterministic₀ execDeterministic execDeterministic l r
+    -- execDeterministic l@(execSeq _ _ _ _)                  r@(execSeq _ _ _ _)                                  = execSeqDeterministic₀ execDeterministic execDeterministic l r
     -- execDeterministic (execIfThenElseTrue _ _ seq₁)      (execIfThenElseTrue _ _ seq₂)                      = execseqDeterministic₀ execDeterministic refl seq₁ seq₂
     -- execDeterministic (execIfThenElseTrue _ c＝true _)   (execIfThenElseFalse _ c＝false _) rewrite c＝true  = contradiction c＝false λ ()
     -- execDeterministic (execIfThenElseFalse _ c＝false _) (execIfThenElseTrue _ c＝true _)   rewrite c＝false = contradiction c＝true λ ()
-    -- execDeterministic (execIfThenElseFalse _ _ seq₁)     (execIfThenElseFalse _ _ seq₂)                     = execseqDeterministic₀ execDeterministic refl seq₁ seq₂
-    -- execDeterministic l@(execWhileFalse _ _ _)           r@(execWhileFalse _ _ _)                           = execWhileDeterministic₀ execDeterministic l r
-    -- execDeterministic l@(execWhileFalse _ _ _)           r@(execWhileLoop _ _ _ _ _)                        = execWhileDeterministic₀ execDeterministic l r
-    -- execDeterministic l@(execWhileLoop _ _ _ _ _)        r@(execWhileFalse _ _ _)                           = execWhileDeterministic₀ execDeterministic l r
-    -- execDeterministic l@(execWhileLoop _ _ _ _ _)        r@(execWhileLoop _ _ _ _ _)                        = execWhileDeterministic₀ execDeterministic l r 
+    -- execDeterministic (execIfThenElseFalse _ _ seq₁)    (execIfThenElseFalse _ _ seq₂)                      = execseqDeterministic₀ execDeterministic refl seq₁ seq₂
+    -- execDeterministic l@(execWhileFalse _ _ _)            r@(execWhileFalse _ _ _)                              = execWhileDeterministic₀ execDeterministic l r
+    -- execDeterministic l@(execWhileFalse _ _ _)            r@(execWhileLoop _ _ _ _ _)                           = execWhileDeterministic₀ execDeterministic l r
+    -- execDeterministic l@(execWhileLoop _ _ _ _ _)         r@(execWhileFalse _ _ _)                              = execWhileDeterministic₀ execDeterministic l r
+    -- execDeterministic l@(execWhileLoop _ _ _ _ _)         r@(execWhileLoop _ _ _ _ _)                           = execWhileDeterministic₀ execDeterministic l r 

@@ -86,34 +86,63 @@ module Traces where
     -- #############################
     -- # Coinductive Record Traces
     -- #############################
-    -- module Trace₂ where
-    --     record Trace₂ : Set where
-    --         coinductive
-    --         constructor mkTrace
-    --         field
-    --             t : Maybe (State × Trace₂)
+    module Trace₂ where
+        mutual
+            data rTrace₂ : Set where
+                tnil : State → rTrace₂
+                tcons : State → Trace₂ → rTrace₂
 
-    --     infix 4 _≈_
+            record Trace₂ : Set where
+                coinductive
+                constructor mkTr
+                field
+                    out : rTrace₂
 
-    --     open Trace₂
+        open Trace₂
 
-    --     -- data _≈_ : Rel Trace₂ Level.zero where
-    --     --     tnil  : ∀ {tr₁ tr₂} → t tr₁ ≡ nothing → t tr₂ ≡ nothing → tr₁ ≈ tr₂
-    --     --     tcons : ∀ {st tr₁ tr₂ tr₃ tr₄} → t tr₁ ≡ just (st , tr₃) → t tr₂ ≡ just (st , tr₄) → tr₃ ≈ tr₄ → tr₁ ≈ tr₂
+        mutual
+            data _r≈_ : Rel rTrace₂ Level.zero where
+                tnil : ∀ {st} → (tnil st) r≈ (tnil st)
+                tcons : ∀ {st tr₁ tr₂} → tr₁ ≈ tr₂ → (tcons st tr₁) r≈ (tcons st tr₂)
 
-    --     record bisim (tr₁ tr₂ : Trace₂) : Set where
-    --         coinductive
-    --         constructor _≈_
-    --         field
-    --             x :     (t tr₁ ≡ nothing) × (t tr₂ ≡ nothing) -- Either both traces are empty,
-    --                 ⊎ 
-    --                     ∃ {_} {_} {(State × Trace₂) × (State × Trace₂)} λ c → ( 
-    --                             (t tr₁ ≡ just (proj₁ c) × t tr₂ ≡ just (proj₂ c)) -- or they are both non-empty
-    --                             ×
-    --                             (proj₁ (proj₁ c) ≡ proj₁ (proj₂ c))
-    --                             ×
-    --                             bisim (proj₂ (proj₁ c)) (proj₂ (proj₂ c))
-    --                         )
+            record _≈_ (tr₁ tr₂ : Trace₂) : Set where
+                coinductive
+                constructor mkBisim
+                field
+                    p : (out tr₁) r≈ (out tr₂)
+
+        setoid₂ : Setoid Level.zero Level.zero
+        setoid₂ = record
+            { Carrier = Trace₂
+            ; _≈_ = _≈_
+            ; isEquivalence = record
+                {   refl = refl
+                ;   sym = sym
+                ;   trans = trans
+                }
+            }
+            where
+                refl : Reflexive _≈_
+                refl {x} ._≈_.p = rrefl
+                    where
+                        rrefl : Reflexive _r≈_
+                        rrefl {tnil x} = tnil
+                        rrefl {tcons x x₁} = tcons refl
+
+
+                sym : Symmetric _≈_
+                sym h ._≈_.p = rsym (h ._≈_.p)
+                    where
+                        rsym : Symmetric _r≈_
+                        rsym tnil = tnil
+                        rsym (tcons x) = tcons (sym x)
+
+                trans : Transitive _≈_
+                trans x y ._≈_.p = rtrans (x ._≈_.p) (y ._≈_.p)
+                    where
+                        rtrans : Transitive _r≈_
+                        rtrans tnil tnil = tnil
+                        rtrans (tcons x) (tcons y) = tcons (trans x y)
 
 
 
