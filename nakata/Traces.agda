@@ -47,7 +47,7 @@ module Traces where
 
         data _≈_ : Rel Trace₁ Level.zero where
             tnil : ∀ {st} → (tnil st) ≈ (tnil st)
-            tcons : ∀ {e tr₁ tr₂} → ∞ (♭ tr₁ ≈ ♭ tr₂) → (tcons e tr₁) ≈ (tcons e tr₂)
+            tcons : ∀ {st tr₁ tr₂} → ∞ (♭ tr₁ ≈ ♭ tr₂) → (tcons st tr₁) ≈ (tcons st tr₂)
 
         setoid₁ : Setoid Level.zero Level.zero
         setoid₁ = record
@@ -144,6 +144,7 @@ module Traces where
                         rtrans tnil tnil = tnil
                         rtrans (tcons x) (tcons y) = tcons (trans x y)
 
+        
 
 
     module Trace₃ where
