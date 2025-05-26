@@ -111,6 +111,45 @@ module Traces where
                 field
                     p : (out tr₁) r≈ (out tr₂)
 
+
+        private mutual
+            rrefl : Reflexive _r≈_
+            rrefl {tnil x} = tnil
+            rrefl {tcons x x₁} = tcons refl
+
+            rsym : Symmetric _r≈_
+            rsym tnil = tnil
+            rsym (tcons x) = tcons (sym x)
+
+
+            rtrans : Transitive _r≈_
+            rtrans tnil tnil = tnil
+            rtrans (tcons x) (tcons y) = tcons (trans x y)
+
+            refl : Reflexive _≈_
+            refl {x} ._≈_.p = rrefl
+
+
+            sym : Symmetric _≈_
+            sym h ._≈_.p = rsym (h ._≈_.p)
+
+            trans : Transitive _≈_
+            trans x y ._≈_.p = rtrans (x ._≈_.p) (y ._≈_.p)
+
+        setoid₂r : Setoid Level.zero Level.zero
+        setoid₂r = record
+            { Carrier = rTrace₂
+            ; _≈_ = _r≈_
+            ; isEquivalence = record
+                {   refl = rrefl
+                ;   sym = rsym
+                ;   trans = rtrans
+                }
+            }
+
+        -- open Setoid setoid₂r using () renaming (refl to rrefl; sym to rsym; trans to rtrans)
+
+
         setoid₂ : Setoid Level.zero Level.zero
         setoid₂ = record
             { Carrier = Trace₂
@@ -121,28 +160,6 @@ module Traces where
                 ;   trans = trans
                 }
             }
-            where
-                refl : Reflexive _≈_
-                refl {x} ._≈_.p = rrefl
-                    where
-                        rrefl : Reflexive _r≈_
-                        rrefl {tnil x} = tnil
-                        rrefl {tcons x x₁} = tcons refl
-
-
-                sym : Symmetric _≈_
-                sym h ._≈_.p = rsym (h ._≈_.p)
-                    where
-                        rsym : Symmetric _r≈_
-                        rsym tnil = tnil
-                        rsym (tcons x) = tcons (sym x)
-
-                trans : Transitive _≈_
-                trans x y ._≈_.p = rtrans (x ._≈_.p) (y ._≈_.p)
-                    where
-                        rtrans : Transitive _r≈_
-                        rtrans tnil tnil = tnil
-                        rtrans (tcons x) (tcons y) = tcons (trans x y)
 
         
 
