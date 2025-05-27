@@ -18,7 +18,7 @@ open import Language
 
 open Trace₃
 
-module BigRel2 where
+module BigRel3 where
     -- append : Trace₁ → Trace₁ → Trace₁
     -- append (tnil x) t₂ = tcons x (♯ t₂)
     -- append (tcons x t) t₂ = tcons x (♯ append (♭ t) t₂)

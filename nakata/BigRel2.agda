@@ -1,7 +1,7 @@
 {-# OPTIONS --guardedness #-}
 
 open import Data.Bool using (Bool; true; false)
-open import Relation.Binary.PropositionalEquality using (_≡_; cong; subst) renaming (trans to eqTrans; sym to eqSym)
+open import Relation.Binary.PropositionalEquality using (_≡_; cong; subst; subst₂) renaming (trans to eqTrans; sym to eqSym)
 open import Codata.Musical.Notation
 open import Data.Nat using (ℕ; zero; suc; _<?_)
 open import Function.Base using (case_of_)
@@ -82,14 +82,8 @@ module BigRel2 where
             field
                 p : rexecseq s tr tr′
 
-        -- data execseq : Stmt → Trace₁ → Trace₁ → Set where
-        --     execseqNil : {st : State} {s : Stmt} {tr : Trace₁} 
-        --         → exec s st tr 
-        --         → execseq s (tnil st) tr
-                
-        --     execseqCons : {s : Stmt} (st : State) (tr tr′ : ∞ Trace₁) 
-        --         → ∞ (execseq s (♭ tr) (♭ tr′)) 
-        --         → execseq s (tcons st tr) (tcons st tr′)
+    open Setoid setoid₂ using (refl; sym; trans)
+    open Setoid setoid₂r using () renaming (refl to rrefl; sym to rsym; trans to rtrans)
 
     add1 : Expr
     add1 x = x 0 + 1
@@ -97,170 +91,90 @@ module BigRel2 where
     startState : State
     startState = λ {0 → 0 ; _ → 42}
 
-    -- ex : exec (Sassign 0 add1) startState (tcons startState (♯ (tnil (update 0 (add1 startState) startState))))
-    -- ex = execAssign (tcons (♯ tnil))
-
-    -- module exloop where
-    --     -- Is the variable at location 0 less than 2 in the given state?
-    --     lt2 : Expr
-    --     lt2 x  = case x 0 <? 2 of λ {(yes _) → 1 ; (no _) → 0}
-
-    --     guardTest1 : Trace₁
-    --     guardTest1 = tcons startState (♯ tnil startState)
-
-    --     updateOnce : State
-    --     updateOnce = update 0 (add1 startState) startState
-
-    --     loop1 : Trace₁
-    --     loop1 = append guardTest1 (tnil updateOnce)
-
-    --     guardTest2 : Trace₁
-    --     guardTest2 = append loop1 (tnil updateOnce)
-
-    --     updateTwice : State
-    --     updateTwice = update 0 (add1 updateOnce) updateOnce
-
-    --     loop2 : Trace₁
-    --     loop2 = append guardTest2 (tnil updateTwice)
-
-    --     guardTest3 : Trace₁
-    --     guardTest3 = append loop2 (tnil updateTwice)
-
-    --     -- Proof tree of a program that loops twice then exits
-    --     exlooping2 : exec (Swhile lt2 (Sassign 0 add1)) startState guardTest3
-    --     exlooping2 = execWhileLoop
-    --         loop1 
-    --         guardTest3 
-    --         _≡_.refl 
-    --         (execseqCons 
-    --             startState 
-    --             _ 
-    --             _ 
-    --             (♯ execseqNil (execAssign (tcons (♯ tnil))))) 
-
-    --         (execseqCons 
-    --             startState 
-    --             _ 
-    --             _ 
-    --             (♯ (execseqCons 
-    --                 startState 
-    --                 _ 
-    --                 _ 
-    --                 (♯ (execseqNil 
-    --                     (execWhileLoop 
-    --                         (tcons updateOnce (♯ (tcons updateOnce (♯ (tnil updateTwice)))))
-    --                         _ 
-    --                         _≡_.refl 
-    --                         (execseqCons updateOnce _ _ (♯ (execseqNil (execAssign (tcons (♯ tnil))))))
-    --                         (execseqCons updateOnce _ _ (♯ (execseqCons updateOnce _ _ (♯ (execseqNil
-    --                             (execWhileFalse
-    --                             _ 
-    --                             _≡_.refl 
-    --                             (tcons (♯ tnil))))))))))))))
-
-    --     loopforevertrace : Trace₁
-    --     loopforevertrace = tcons startState (♯ loopforevertrace)
-
     loopforevertrace : Trace₂
     loopforevertrace .out = tcons startState loopforevertrace
         
     -- Proof tree of a program that loops forever
-    -- exloopforever : exec (Swhile (λ _ → 1) Sskip) startState loopforevertrace
-    -- exloopforever = execWhileLoop (mkTr (tcons startState (mkTr (tnil startState)))) loopforevertrace _≡_.refl 
-    --     (mkExecseq (rexecseqCons _ _ _ _ _ _≡_.refl _≡_.refl (mkExecseq (rexecseqNil _≡_.refl execSkip)))) 
-    --     execseqForever
-    --     where
-    --         lem : out loopforevertrace ≡ (tcons startState loopforevertrace)
-    --         lem = _≡_.refl
+    exloopforever : exec (Swhile (λ _ → 1) Sskip) startState loopforevertrace
+    exloopforever = execWhileLoop (mkTr (tcons startState (mkTr (tnil startState)))) loopforevertrace _≡_.refl 
+        (mkExecseq (rexecseqCons startState _ (mkTr (tnil startState)) _ _ refl refl (mkExecseq (rexecseqNil refl execSkip))))
+        forever
+        where
+            forever : execseq (Swhile (λ _ → 1) Sskip) (mkTr (tcons startState (mkTr (tnil startState)))) loopforevertrace
+            forever .execseq.p = rexecseqCons startState _ (mkTr (tnil startState)) _ _ refl (mkBisim rrefl) (mkExecseq (rexecseqNil (mkBisim tnil) exloopforever))
 
-    --         execseqForever : execseq (Swhile (λ _ → 1) Sskip) (mkTr (tcons startState (mkTr (tnil startState)))) loopforevertrace 
-    --         execseqForever .execseq.p = rexecseqCons _ _ _ _ _ _≡_.refl {!   !} (mkExecseq (rexecseqNil _≡_.refl exloopforever))
+    next : State → State
+    next st = update 0 (add1 st) st
 
-    --     next : State → State
-    --     next st = update 0 (add1 st) st
+    incrementingFrom : State → Trace₂
+    incrementingFrom st .out = tcons st (mkTr (tcons st (incrementingFrom (next st))))
 
-    --     incrementingFrom : State → Trace₁
-    --     incrementingFrom st = tcons st (♯ tcons st (♯ (incrementingFrom (next st))))
+    incrementingtrace : Trace₂
+    incrementingtrace = incrementingFrom startState
 
-    --     incrementingtrace : Trace₁
-    --     incrementingtrace = incrementingFrom startState
+    exloopincrementing : exec (Swhile (λ _ → 1) (Sassign 0 add1)) startState incrementingtrace
+    exloopincrementing = t startState
+        where
+            t : (st : State) → exec (Swhile (λ _ → 1) (Sassign 0 add1)) st (incrementingFrom st)
+            t₁ : (st : State) → execseq (Swhile (λ _ → 1) (Sassign 0 add1)) (mkTr (tcons st (mkTr (tcons st (mkTr (tnil (next st))))))) (incrementingFrom st)
 
-    --     exloopincrementing : exec (Swhile (λ _ → 1) (Sassign 0 add1)) startState incrementingtrace
-    --     exloopincrementing = t startState
-    --         where
-    --             t : (st : State) → exec (Swhile (λ _ → 1) (Sassign 0 add1)) st (incrementingFrom st)
-    --             t st = execWhileLoop 
-    --                 (tcons st (♯ (tcons st (♯ (tnil (update 0 (add1 st) st)))))) 
-    --                 _ 
-    --                 _≡_.refl 
-    --                 (execseqCons st _ _ (♯ execseqNil (execAssign (tcons (♯ tnil)))))
-    --                 (execseqCons st _ _ (♯ (execseqCons st _ _ (♯ (execseqNil (t (next st)))))))
+            t st = execWhileLoop
+                (mkTr (tcons st (mkTr (tcons st (mkTr (tnil (next st))))))) 
+                _ 
+                _≡_.refl 
+                (mkExecseq (rexecseqCons st _ (mkTr (tnil st)) _ _ refl refl (mkExecseq (rexecseqNil refl execAssign)))) 
+                (t₁ st)
+
+            t₁ st .execseq.p = rexecseqCons st _ _ _ _ refl (mkBisim rrefl) (mkExecseq (rexecseqCons st _ _ _ _ refl refl (mkExecseq (rexecseqNil refl (t (next st))))))
 
 
-    --     -- increasing id v tr : In trace tr, variable at location id starts with value v and always increases by 1 after 2 applications of tcons (one application for guard checking, and one for reassignment)
-    --     data increasing : Id → Val → Trace₁ → Set where
-    --         increasingCons : {id : Id} {v : Val} {st : State} {tr tr₁ : Trace₁} 
-    --             → st id ≡ v 
-    --             → tr₁ ≈ tcons st (♯ (tcons st (♯ tr))) 
-    --             → ∞ (increasing id (suc v) tr) 
-    --             → increasing id v tr₁
+    mutual
+        record increasing (id : Id) (v : Val) (tr : Trace₂) : Set where
+            coinductive
+            field
+                p : rincreasing id v tr
 
-    --     incrementingAlwaysIncrements : increasing 0 0 incrementingtrace
-    --     incrementingAlwaysIncrements = forever refl
-    --         where
-    --             open Setoid setoid₁ using () renaming (refl to ≈refl)
-    --             open import Relation.Binary.PropositionalEquality
-    --             open ≡-Reasoning
+        data rincreasing : Id → Val → Trace₂ → Set where
+            rinc : {id : Id} {v : Val} {st : State} {tr tr₁ : Trace₂} 
+                → st id ≡ v 
+                → tr₁ ≈ mkTr (tcons st (mkTr (tcons st tr)))
+                → increasing id (suc v) tr
+                → rincreasing id v tr₁
 
-    --             lem₁ : {x : ℕ} → x + 1 ≡ suc x
-    --             lem₁ {zero} = refl
-    --             lem₁ {suc x} = begin
-    --                 suc (x + 1)
-    --                 ≡⟨⟩
-    --                 suc x + suc zero
-    --                 ≡⟨ cong suc (lem₁) ⟩
-    --                 suc (suc x)
-    --                 ∎
 
-    --             lem₂ : {v : Val} → (st : State) → (st 0 ≡ v) → next st 0 ≡ suc v
-    --             lem₂ {v} st x = begin
-    --                 next st 0
-    --                 ≡⟨⟩
-    --                 st 0 + 1
-    --                 ≡⟨ cong (_+ 1) x ⟩
-    --                 v + 1
-    --                 ≡⟨ lem₁ ⟩
-    --                 suc v
-    --                 ∎
+    incrementingAlwaysIncrements : increasing 0 0 incrementingtrace
+    incrementingAlwaysIncrements = forever _≡_.refl
+        where
+            open import Relation.Binary.PropositionalEquality hiding (refl)
+            open ≡-Reasoning
 
-    --             forever : {st : State} {v : Val} → (st 0 ≡ v) → increasing 0 v (incrementingFrom st)
-    --             forever {st} x = increasingCons x (tcons (♯ (tcons (♯ ≈refl)))) (♯ forever (lem₂ st x))
+            lem₁ : {x : ℕ} → x + 1 ≡ suc x
+            lem₁ {zero} = _≡_.refl
+            lem₁ {suc x} = begin
+                suc (x + 1)
+                ≡⟨⟩
+                suc x + suc zero
+                ≡⟨ cong suc (lem₁) ⟩
+                suc (suc x)
+                ∎
 
-    --     ITEfinal : Trace₁
-    --     ITEfinal = (tcons startState (♯ (tcons startState (♯ (tcons (next startState) (♯ (tcons (next (next startState)) (♯ (tcons (next (next startState)) (♯ (tnil (next (next (next startState))))))))))))))
+            lem₂ : {v : Val} → (st : State) → (st 0 ≡ v) → next st 0 ≡ suc v
+            lem₂ {v} st x = begin
+                next st 0
+                ≡⟨⟩
+                st 0 + 1
+                ≡⟨ cong (_+ 1) x ⟩
+                v + 1
+                ≡⟨ lem₁ ⟩
+                suc v
+                ∎
 
-    --     exITE : exec 
-    --         (Sifthenelse 
-    --             lt2 
-    --             (Sseq 
-    --                 (Sseq (Sassign 0 add1) (Sassign 0 add1)) 
-    --                 (Sifthenelse lt2 Sskip (Sassign 0 add1))) 
-    --             Sskip) 
-    --         startState 
-    --         ITEfinal
-    --     exITE = execIfThenElseTrue 
-    --         Sskip 
-    --         _≡_.refl 
-    --         (execseqCons _ _ _ (♯ (execseqNil (execSeq 
-    --             (tcons startState (♯ (tcons (next startState) (♯ (tnil (next (next startState))))))) _ 
-    --             (execSeq (tcons startState(♯ (tnil (next startState)))) _ (execAssign (tcons (♯ tnil))) (execseqCons _ _ _ (♯ (execseqNil (execAssign (tcons (♯ tnil))))))) 
-    --             (execseqCons _ _ _ (♯ (execseqCons _ _ _ (♯ (execseqNil (execIfThenElseFalse _ _≡_.refl (execseqCons _ _ _ (♯ (execseqNil (execAssign (tcons (♯ tnil))))))))))))))))           
+            forever : {st : State} {v : Val} → (st 0 ≡ v) → increasing 0 v (incrementingFrom st)
+            forever {st} x .increasing.p = rinc x (mkBisim rrefl) (forever (lem₂ st x))
+         
 
     tnil≠tcons : {st₁ st₂ : State} {tr : Trace₂} → (tnil st₁) ≡ (tcons st₂ tr) → ⊥
     tnil≠tcons ()
-
-    open Setoid setoid₂ using (refl; sym; trans)
-    open Setoid setoid₂r using () renaming (refl to rrefl; sym to rsym; trans to rtrans)
 
     linkH : ∀ {i₁ i₂ i₃ i₄} → i₁ ≈ i₂ → i₁ ≈ i₃ → i₂ ≈ i₄ → i₃ ≈ i₄
     linkH h a b = trans (sym a) (trans h b)
@@ -269,6 +183,7 @@ module BigRel2 where
     linkHr h a b = rtrans (rsym a) (rtrans h b)
 
     mutual
+        -- This used to be mutual, but I merged it into a single function in an attempt to help the termination checker
         -- rexecseqDeterministic₀ : {s : Stmt}
         --     → ({st : State} {tr₁ tr₂ : Trace₂} → exec s st tr₁ → exec s st tr₂ → tr₁ ≈ tr₂) 
         --     → ({tr₁ tr₂ tr₃ tr₄ : Trace₂} → tr₁ ≈ tr₂ → rexecseq s tr₁ tr₃ → rexecseq s tr₂ tr₄ → (out tr₃) r≈ (out tr₄))
@@ -296,7 +211,9 @@ module BigRel2 where
         ... | ()
         execseqDeterministic₀ x x₁ x₂ x₃ ._≈_.p | rexecseqCons st _ tr₂ tr₃ _ a c x₆ | rexecseqCons st₁ _ tr₄ tr₅ _ b d x₉ with linkH x₁ a b ._≈_.p
         -- ... | tcons x₂ = {!   !}
-        ... | a@(tcons n) = linkHr (tcons (execseqDeterministic₀ x n x₆ x₉)) (rsym (c ._≈_.p)) (rsym (d ._≈_.p))
+        ... | tcons n with _≈_.p c | _≈_.p d
+        ... | aaa | bbb = let reshape = λ y → linkHr y (rsym aaa) (rsym bbb) in reshape (tcons ((execseqDeterministic₀ x n x₆ x₉)))
+            -- linkHr (tcons (execseqDeterministic₀ x n x₆ x₉)) (rsym (c ._≈_.p)) (rsym (d ._≈_.p))
         -- execseqDeterministic₀ x {tr₁} {tr₂} x₁ x₂ x₃ ._≈_.p with out tr₁ in eq₁ | out tr₂ in eq₂ | (_≈_.p x₁) | (execseq.p x₂) | (execseq.p x₃) 
         -- ... | tnil st | tnil st₁ | tnil | rexecseqNil a b | rexecseqNil c d = {!   !}
     -- execseqDeterministic₀ h tnil              (execseqNil ex₁)         (execseqNil ex₂)         = h ex₁ ex₂
@@ -313,6 +230,7 @@ module BigRel2 where
     execWhileDeterministic₁ : {c : Expr} {b : Stmt} → ({st : State} {tr₁ tr₂ : Trace₂} → (exec b st tr₁ → exec b st tr₂ → tr₁ ≈ tr₂)) 
         → {tr₁ tr₂ tr₃ tr₄ : Trace₂} → tr₁ ≈ tr₂ → execseq (Swhile c b) tr₁ tr₃ → execseq (Swhile c b) tr₂ tr₄ → tr₃ ≈ tr₄
 
+    -- With propositional equality, this would have worked
     -- execWhileDeterministic₁ x x₁ x₂ x₃ ._≈_.p with execseq.p x₂ | execseq.p x₃
     -- ... | rexecseqNil _ x₅ | rexecseqNil _ x₇ with _≈_.p x₁ in eq
     -- execWhileDeterministic₁ x x₁ x₂ x₃ ._≈_.p | rexecseqNil _≡_.refl (execWhileFalse _ _) | rexecseqNil _≡_.refl (execWhileFalse _ _) | tnil = tcons x₁

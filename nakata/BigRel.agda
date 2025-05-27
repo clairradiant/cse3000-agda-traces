@@ -25,7 +25,7 @@ module BigRel where
     -- unwind (tcons st t) = unwind (♭ t)
 
     mutual
-        data exec : (s : Stmt) → (st : State) → (tr : Trace₁) → Set where
+        data exec : Stmt → State → Trace₁ → Set where
             execSkip : {st : State}
                 → exec Sskip st (tnil st)
 

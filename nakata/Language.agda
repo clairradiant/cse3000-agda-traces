@@ -10,16 +10,6 @@ module Language where
     Expr : Set
     Expr = State → Val
 
-    -- -- concrete expressions (not part of original paper)
-    -- data Id : Set where
-    --     mkId : List Char → Id 
-
-    -- data Exp : Set where
-    --     eBool : (b : Bool) → Exp 
-    --     eInt  : (i : ℤ) → Exp
-    --     eId   : (i : Id) → Exp 
-
-
     data Stmt : Set where
         Sskip : Stmt
         Sassign : Id → Expr → Stmt
