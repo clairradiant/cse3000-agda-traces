@@ -302,10 +302,10 @@ module nakata.Traces where
 
                 sym : Symmetric (Bisim i)
                 sym tnil = tnil
-                sym (tcons x) = tcons λ where .force {j} → sym {! x .force  !}
+                sym (tcons x) = sym (tcons (λ where .force → force x))
 
                 trans : Transitive (Bisim i)
-                trans = {!   !}
+                trans x y = {!   !}
 
 
 

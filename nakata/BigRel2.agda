@@ -1,4 +1,4 @@
-{-# OPTIONS --guardedness #-}
+{-# OPTIONS --guardedness --allow-incomplete-matches --allow-unsolved-metas #-}
 
 open import Data.Bool using (Bool; true; false)
 open import Relation.Binary.PropositionalEquality using (_≡_; cong; subst; subst₂) renaming (trans to eqTrans; sym to eqSym)
@@ -12,12 +12,12 @@ open import Relation.Binary.Bundles using (Setoid)
 open import Data.Product
 open import Data.Empty
 
-open import Traces
-open import Language
+open import nakata.Traces
+open import nakata.Language
 
 open Trace₂
 
-module BigRel2 where
+module nakata.BigRel2 where
     -- append : Trace₁ → Trace₁ → Trace₁
     -- append (tnil x) t₂ = tcons x (♯ t₂)
     -- append (tcons x t) t₂ = tcons x (♯ append (♭ t) t₂)
@@ -181,8 +181,13 @@ module BigRel2 where
 
     linkHr : ∀ {i₁ i₂ i₃ i₄} → i₁ r≈ i₂ → i₁ r≈ i₃ → i₂ r≈ i₄ → i₃ r≈ i₄
     linkHr h a b = rtrans (rsym a) (rtrans h b)
+    
 
-    mutual
+    execDeterministic : {s : Stmt} {st : State} {tr₁ tr₂ : Trace₂} 
+        → exec s st tr₁ 
+        → exec s st tr₂ 
+        → tr₁ ≈ tr₂
+
         -- This used to be mutual, but I merged it into a single function in an attempt to help the termination checker
         -- rexecseqDeterministic₀ : {s : Stmt}
         --     → ({st : State} {tr₁ tr₂ : Trace₂} → exec s st tr₁ → exec s st tr₂ → tr₁ ≈ tr₂) 
@@ -198,37 +203,43 @@ module BigRel2 where
         -- ... | a@(tcons x₂) = linkHr (tcons (execseqDeterministic₀ x x₂ x₄ x₇)) (rsym (c ._≈_.p)) (rsym (d ._≈_.p))
         -- -- tcons (execseqDeterministic₀ x x₂ x₄ x₇)
 
-
-        execseqDeterministic₀ : {s : Stmt}
-            → ({st : State} {tr₁ tr₂ : Trace₂} → exec s st tr₁ → exec s st tr₂ → tr₁ ≈ tr₂) 
-            → ({tr₁ tr₂ tr₃ tr₄ : Trace₂} → tr₁ ≈ tr₂ → execseq s tr₁ tr₃ → execseq s tr₂ tr₄ → tr₃ ≈ tr₄)
-        execseqDeterministic₀ x x₁ x₂ x₃ ._≈_.p with (execseq.p x₂) | execseq.p (x₃)
-        ... | rexecseqNil a x₅ | rexecseqNil b x₇ with linkH x₁ a b ._≈_.p
-        ... | tnil = _≈_.p (x x₅ x₇)
-        execseqDeterministic₀ x x₁ x₂ x₃ ._≈_.p | rexecseqNil a x₅ | rexecseqCons st _ tr₂ tr₃ _ b x₇ x₈ with linkH x₁ a b ._≈_.p
-        ... | ()
-        execseqDeterministic₀ x x₁ x₂ x₃ ._≈_.p | rexecseqCons st _ tr₂ tr₃ _ a x₅ x₆ | rexecseqNil b x₈ with linkH x₁ a b ._≈_.p
-        ... | ()
-        execseqDeterministic₀ x x₁ x₂ x₃ ._≈_.p | rexecseqCons st _ tr₂ tr₃ _ a c x₆ | rexecseqCons st₁ _ tr₄ tr₅ _ b d x₉ with linkH x₁ a b ._≈_.p
-        -- ... | tcons x₂ = {!   !}
-        ... | tcons n with _≈_.p c | _≈_.p d
-        ... | aaa | bbb = let reshape = λ y → linkHr y (rsym aaa) (rsym bbb) in reshape (tcons ((execseqDeterministic₀ x n x₆ x₉)))
-            -- linkHr (tcons (execseqDeterministic₀ x n x₆ x₉)) (rsym (c ._≈_.p)) (rsym (d ._≈_.p))
+        -- The calls to linkH are enough to show that both sides of bisim are either tnil or tcons (or absurd), allowing me to match
+    execseqDeterministic₀ : {s : Stmt}
+        -- → ({st : State} {tr₁ tr₂ : Trace₂} → exec s st tr₁ → exec s st tr₂ → tr₁ ≈ tr₂) 
+        → ({tr₁ tr₂ tr₃ tr₄ : Trace₂} → tr₁ ≈ tr₂ → execseq s tr₁ tr₃ → execseq s tr₂ tr₄ → tr₃ ≈ tr₄)
+    execseqDeterministic₀ tr₁≈tr₂ exs₁ exs₂ ._≈_.p with (execseq.p exs₁) | execseq.p (exs₂)
+    ... | rexecseqNil res₁ ex₁ | rexecseqNil res₂ ex₂ with _≈_.p tr₁≈tr₂
+    ... | tnil? = {! tnil?  !}
+    execseqDeterministic₀ x₁ x₂ x₃ ._≈_.p | rexecseqNil a x₅ | rexecseqCons st _ tr₂ tr₃ _ b x₇ x₈ = {!   !}
+    -- ... | rexecseqNil a x₅ | rexecseqNil b x₇ with linkH x₁ a b ._≈_.p
+    -- ... | tnil = _≈_.p (execDeterministic x₅ x₇)
+    -- execseqDeterministic₀ x₁ x₂ x₃ ._≈_.p | rexecseqNil a x₅ | rexecseqCons st _ tr₂ tr₃ _ b x₇ x₈ with linkH x₁ a b ._≈_.p
+    -- ... | ()
+    -- execseqDeterministic₀ x₁ x₂ x₃ ._≈_.p | rexecseqCons st _ tr₂ tr₃ _ a x₅ x₆ | rexecseqNil b x₈ with linkH x₁ a b ._≈_.p
+    -- ... | ()
+    execseqDeterministic₀ x₁ x₂ x₃ ._≈_.p | rexecseqCons st _ tr₂ tr₃ _ a c x₆ | rexecseqCons st₁ _ tr₄ tr₅ _ b d x₉ with linkH x₁ a b ._≈_.p
+    -- ... | tcons x with _≈_.p c | _≈_.p d = ?
+    -- ... | tcons x₄ | tcons x₅ = tcons (execseqDeterministic₀ {!   !} {!   !} {!   !})
+    -- with linkH x₁ a b ._≈_.p
+    -- ... | tcons x₂ = {!   !}
+    ... | tcons n = let reshape = λ y → linkHr y (rsym (c ._≈_.p)) (rsym (d ._≈_.p)) in reshape {!   !}
+    -- reshape (tcons ((execseqDeterministic₀ n x₆ x₉)))
+            -- linkHr (tcons (execseqDeterministic₀ n x₆ x₉)) (rsym (c ._≈_.p)) (rsym (d ._≈_.p))
         -- execseqDeterministic₀ x {tr₁} {tr₂} x₁ x₂ x₃ ._≈_.p with out tr₁ in eq₁ | out tr₂ in eq₂ | (_≈_.p x₁) | (execseq.p x₂) | (execseq.p x₃) 
         -- ... | tnil st | tnil st₁ | tnil | rexecseqNil a b | rexecseqNil c d = {!   !}
     -- execseqDeterministic₀ h tnil              (execseqNil ex₁)         (execseqNil ex₂)         = h ex₁ ex₂
     -- execseqDeterministic₀ h (tcons tr₁′≈tr₂′) (execseqCons _ _ _ tr₁⇒tr₃) (execseqCons _ _ _ tr₂⇒tr₄) = tcons (♯ execseqDeterministic₀ h (♭ tr₁′≈tr₂′) (♭ tr₁⇒tr₃) (♭ tr₂⇒tr₄))
 
     execSeqDeterministic₀ : {s₁ s₂ : Stmt} 
-        → ({st : State} {tr₁ tr₂ : Trace₂} → exec s₁ st tr₁ → exec s₁ st tr₂ → tr₁ ≈ tr₂)
-        → ({st : State} {tr₁ tr₂ : Trace₂} → exec s₂ st tr₁ → exec s₂ st tr₂ → tr₁ ≈ tr₂)
+        -- → ({st : State} {tr₁ tr₂ : Trace₂} → exec s₁ st tr₁ → exec s₁ st tr₂ → tr₁ ≈ tr₂)
+        -- → ({st : State} {tr₁ tr₂ : Trace₂} → exec s₂ st tr₁ → exec s₂ st tr₂ → tr₁ ≈ tr₂)
         → {st : State} {tr₁ tr₂ : Trace₂} → exec (Sseq s₁ s₂) st tr₁ → exec (Sseq s₁ s₂) st tr₂ → tr₁ ≈ tr₂
-    execSeqDeterministic₀ h₁ h₂ (execSeq _ _ ex₁ exseq₁) (execSeq _ _ ex₂ exseq₂) = execseqDeterministic₀ h₂ (h₁ ex₁ ex₂) exseq₁ exseq₂
-
-    execWhileDeterministic₀ : {c : Expr} {b : Stmt} → ({st : State} {tr₁ tr₂ : Trace₂} → (exec b st tr₁ → exec b st tr₂ → tr₁ ≈ tr₂))
-        → {st : State} {tr₁ tr₂ : Trace₂} → exec (Swhile c b) st tr₁ → exec (Swhile c b) st tr₂ → tr₁ ≈ tr₂
-    execWhileDeterministic₁ : {c : Expr} {b : Stmt} → ({st : State} {tr₁ tr₂ : Trace₂} → (exec b st tr₁ → exec b st tr₂ → tr₁ ≈ tr₂)) 
-        → {tr₁ tr₂ tr₃ tr₄ : Trace₂} → tr₁ ≈ tr₂ → execseq (Swhile c b) tr₁ tr₃ → execseq (Swhile c b) tr₂ tr₄ → tr₃ ≈ tr₄
+    execSeqDeterministic₀ (execSeq _ _ ex₁ exseq₁) (execSeq _ _ ex₂ exseq₂) = execseqDeterministic₀ (execDeterministic ex₁ ex₂) exseq₁ exseq₂
+    postulate
+        execWhileDeterministic₀ : {c : Expr} {b : Stmt} → ({st : State} {tr₁ tr₂ : Trace₂} → (exec b st tr₁ → exec b st tr₂ → tr₁ ≈ tr₂))
+            → {st : State} {tr₁ tr₂ : Trace₂} → exec (Swhile c b) st tr₁ → exec (Swhile c b) st tr₂ → tr₁ ≈ tr₂
+        execWhileDeterministic₁ : {c : Expr} {b : Stmt} → ({st : State} {tr₁ tr₂ : Trace₂} → (exec b st tr₁ → exec b st tr₂ → tr₁ ≈ tr₂)) 
+            → {tr₁ tr₂ tr₃ tr₄ : Trace₂} → tr₁ ≈ tr₂ → execseq (Swhile c b) tr₁ tr₃ → execseq (Swhile c b) tr₂ tr₄ → tr₃ ≈ tr₄
 
     -- With propositional equality, this would have worked
     -- execWhileDeterministic₁ x x₁ x₂ x₃ ._≈_.p with execseq.p x₂ | execseq.p x₃
@@ -256,18 +267,14 @@ module BigRel2 where
     -- ... | rexecseqCons _ _ _ _ _ _≡_.refl  _≡_.refl x₁₀ | rexecseqCons _ _ _ _ _  _≡_.refl  _≡_.refl x₁₅ = tcons (execWhileDeterministic₁ x (x x₁₄ x₁₆) x₁₀ x₁₅)
 
 
-    execDeterministic : {s : Stmt} {st : State} {tr₁ tr₂ : Trace₂} 
-        → exec s st tr₁ 
-        → exec s st tr₂ 
-        → tr₁ ≈ tr₂
     execDeterministic execSkip                           execSkip                                           = refl
     execDeterministic execAssign          execAssign                          = refl
-    execDeterministic l@(execSeq _ _ _ _)                r@(execSeq _ _ _ _)                                = execSeqDeterministic₀ execDeterministic execDeterministic l r
-    execDeterministic (execIfThenElseTrue _ _ seq₁)      (execIfThenElseTrue _ _ seq₂)                      = execseqDeterministic₀ execDeterministic refl seq₁ seq₂
+    execDeterministic l@(execSeq _ _ _ _)                r@(execSeq _ _ _ _)                                = execSeqDeterministic₀ l r
+    execDeterministic (execIfThenElseTrue _ _ seq₁)      (execIfThenElseTrue _ _ seq₂)                      = execseqDeterministic₀ refl seq₁ seq₂
     execDeterministic (execIfThenElseTrue _ c＝true _)   (execIfThenElseFalse _ c＝false _) rewrite c＝true  = contradiction c＝false λ ()
     execDeterministic (execIfThenElseFalse _ c＝false _) (execIfThenElseTrue _ c＝true _)   rewrite c＝false = contradiction c＝true λ ()
-    execDeterministic (execIfThenElseFalse _ _ seq₁)     (execIfThenElseFalse _ _ seq₂)                     = execseqDeterministic₀ execDeterministic refl seq₁ seq₂
-    execDeterministic l@(execWhileFalse _ _)           r@(execWhileFalse _ _)                           = execWhileDeterministic₀ execDeterministic l r
-    execDeterministic l@(execWhileFalse _ _)           r@(execWhileLoop _ _ _ _ _)                        = execWhileDeterministic₀ execDeterministic l r
-    execDeterministic l@(execWhileLoop _ _ _ _ _)        r@(execWhileFalse _ _)                           = execWhileDeterministic₀ execDeterministic l r
+    execDeterministic (execIfThenElseFalse _ _ seq₁)     (execIfThenElseFalse _ _ seq₂)                     = execseqDeterministic₀ refl seq₁ seq₂
+    execDeterministic l@(execWhileFalse _ _)           r@(execWhileFalse _ _)                               = execWhileDeterministic₀ execDeterministic l r
+    execDeterministic l@(execWhileFalse _ _)           r@(execWhileLoop _ _ _ _ _)                          = execWhileDeterministic₀ execDeterministic l r
+    execDeterministic l@(execWhileLoop _ _ _ _ _)        r@(execWhileFalse _ _)                             = execWhileDeterministic₀ execDeterministic l r
     execDeterministic l@(execWhileLoop _ _ _ _ _)        r@(execWhileLoop _ _ _ _ _)                        = execWhileDeterministic₀ execDeterministic l r 

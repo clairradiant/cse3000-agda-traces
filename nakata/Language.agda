@@ -3,10 +3,10 @@
 open import Data.Nat.Properties using (_≟_)
 open import Relation.Nullary.Decidable
 open import Data.Bool using (Bool)
-open import Traces
+open import nakata.Traces
 open import Function.Base using (case_of_)
 
-module Language where
+module nakata.Language where
     Expr : Set
     Expr = State → Val
 

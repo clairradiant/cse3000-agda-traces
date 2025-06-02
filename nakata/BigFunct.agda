@@ -8,7 +8,7 @@ open import Data.Nat using (ℕ; zero; suc; _<?_; _+_)
 open import Function.Base using (case_of_)
 open import Relation.Nullary.Decidable
 
-module BigFunct where
+module nakata.BigFunct where
     loop : (State → Trace₁) → (State → Bool) → State → Trace₁
     loopseq : (State → Trace₁) → (State → Bool) → Trace₁ → Trace₁
 

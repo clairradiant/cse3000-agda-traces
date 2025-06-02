@@ -10,12 +10,12 @@ open import Relation.Nullary using (contradiction)
 open import Relation.Nullary.Decidable
 open import Relation.Binary.Bundles using (Setoid)
 
-open import nakata.Traces
-open import nakata.Language
+open import Traces
+open import Language
 
 open Trace₁
 
-module nakata.BigRel where
+module BigRel where
     append : Trace₁ → Trace₁ → Trace₁
     append (tnil x) t₂ = tcons x (♯ t₂)
     append (tcons x t) t₂ = tcons x (♯ append (♭ t) t₂)
@@ -25,7 +25,7 @@ module nakata.BigRel where
     -- unwind (tcons st t) = unwind (♭ t)
 
     mutual
-        data exec : Stmt → State → Trace₁ → Set where
+        data exec : (s : Stmt) → (st : State) → (tr : Trace₁) → Set where
             execSkip : {st : State}
                 → exec Sskip st (tnil st)
 
