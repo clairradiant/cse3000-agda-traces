@@ -1,10 +1,10 @@
-{-# OPTIONS --guardedness #-}
+{-# OPTIONS --guardedness --sized-types #-}
 
-open import Codata.Musical.Notation
+import Codata.Musical.Notation
 open import Data.Nat using (ℕ; suc; zero)
 open import Relation.Binary.Core using (Rel)
 open import Relation.Binary.Bundles using (Setoid)
-open import Relation.Binary.Definitions using (Reflexive; Symmetric; Transitive)
+open import Relation.Binary.Definitions using (Reflexive; Symmetric; Transitive; Substitutive)
 open import Relation.Binary.PropositionalEquality using (_≡_; subst; subst₂) renaming (sym to eqSym; trans to eqTrans)
 import Level using (zero)
 open import Data.Maybe using (Maybe; nothing; just)
@@ -14,8 +14,10 @@ open import Data.Product
 open import Data.Sum
 open import Function.Base using (case_of_)
 open import Relation.Nullary using (contradiction)
+import Size
+import Codata.Sized.Thunk
 
-module Traces where
+module nakata.Traces where
 
     Id : Set
     Id = ℕ
@@ -38,6 +40,8 @@ module Traces where
     -- # Musical Traces #
     -- ##################
     module Trace₁ where
+        open Codata.Musical.Notation
+
         data Trace₁ : Set where
             tnil : State → Trace₁
             tcons : State → ∞ Trace₁ → Trace₁
@@ -102,15 +106,16 @@ module Traces where
 
         mutual
             data _r≈_ : Rel rTrace₂ Level.zero where
-                tnil : ∀ {st} → (tnil st) r≈ (tnil st)
-                tcons : ∀ {st tr₁ tr₂} → tr₁ ≈ tr₂ → (tcons st tr₁) r≈ (tcons st tr₂)
+                tnil : ∀ {st} 
+                    → (tnil st) r≈ (tnil st)
+                tcons : ∀ {st tr₁ tr₂} → tr₁ ≈ tr₂ 
+                    → (tcons st tr₁) r≈ (tcons st tr₂)
 
             record _≈_ (tr₁ tr₂ : Trace₂) : Set where
                 coinductive
                 constructor mkBisim
                 field
                     p : (out tr₁) r≈ (out tr₂)
-
 
         private mutual
             rrefl : Reflexive _r≈_
@@ -173,6 +178,8 @@ module Traces where
                 tl : Maybe Trace₃
 
         open Trace₃
+
+        {-# ETA Trace₃ #-}
 
         record _≈_ (tr₁ tr₂ : Trace₃) : Set where
             coinductive
@@ -261,6 +268,45 @@ module Traces where
                         tlj≈tlk = subst₂ _≈_ (eqSym t₃) (eqSym t₄) sndb2
                     in
                         inj₂ ((a₁ , c₁) , _≡_.refl , (_≡_.refl , trans tli≈tlj tlj≈tlk))
+
+    -- ##################
+    -- # Sized Traces   #
+    -- ##################
+    module Trace₄ where
+        open Size
+        open Codata.Sized.Thunk using (Thunk; force)
+
+        data Trace₄ (i : Size) : Set where
+            tnil : State → Trace₄ i
+            tcons : State → Thunk Trace₄ i → Trace₄ i
+
+        data Bisim (i : Size) : Rel (Trace₄ ∞) Level.zero where
+            tnil : ∀ {st} → Bisim i (tnil st) (tnil st)
+            tcons : ∀ {st tr₁ tr₂} → Thunk (λ s → Bisim s (force tr₁) (force tr₂)) i → Bisim i (tcons st tr₁) (tcons st tr₂)
+
+
+        setoid₄ : Size → Setoid Level.zero Level.zero
+        setoid₄ i = record
+            { Carrier = Trace₄ ∞
+            ; _≈_ = Bisim i
+            ; isEquivalence = record
+                {   refl = refl
+                ;   sym = sym
+                ;   trans = trans
+                }
+            }
+            where
+                refl : Reflexive (Bisim i)
+                refl {tnil x} = tnil
+                refl {tcons x y} = tcons λ where .force → refl
+
+                sym : Symmetric (Bisim i)
+                sym tnil = tnil
+                sym (tcons x) = tcons λ where .force {j} → sym {! x .force  !}
+
+                trans : Transitive (Bisim i)
+                trans = {!   !}
+
 
 
         
