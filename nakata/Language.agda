@@ -1,12 +1,25 @@
-{-# OPTIONS --guardedness #-}
+{-# OPTIONS --without-K #-}
 
 open import Data.Nat.Properties using (_≟_)
 open import Relation.Nullary.Decidable
-open import Data.Bool using (Bool)
-open import nakata.Traces
+open import Data.Bool using (Bool; true; false)
+open import Data.Nat using (ℕ; zero; suc)
 open import Function.Base using (case_of_)
 
 module nakata.Language where
+    Id : Set
+    Id = ℕ
+
+    Val : Set
+    Val = ℕ
+
+    State : Set
+    State = Id → Val
+
+    isTrue : Val → Bool
+    isTrue zero = false
+    isTrue (suc x) = true
+
     Expr : Set
     Expr = State → Val
 

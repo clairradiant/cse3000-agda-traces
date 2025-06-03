@@ -10,7 +10,7 @@ open import Relation.Nullary using (contradiction)
 open import Relation.Nullary.Decidable
 open import Relation.Binary.Bundles using (Setoid)
 
-open import nakata.Traces
+open import nakata.MusicalTraces
 open import nakata.Language
 
 open Trace₁
