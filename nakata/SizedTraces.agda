@@ -18,12 +18,11 @@ module nakata.SizedTraces where
     -- # Sized Traces   #
     -- ##################
     module Trace₄ where
-        open Size
-        open Codata.Sized.Thunk using (Thunk; force)
-
         data Trace₄ (i : Size) : Set where
             tnil : State → Trace₄ i
-            tcons : State → Thunk Trace₄ i → Trace₄ i
+            tcons : State 
+                → Thunk Trace₄ i 
+                → Trace₄ i
 
         fromFinite : FiniteTrace → Trace₄ ∞
         fromFinite (tnil x) = tnil x
