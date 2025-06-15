@@ -10,12 +10,12 @@ open import Relation.Nullary using (contradiction)
 open import Relation.Nullary.Decidable
 open import Relation.Binary.Bundles using (Setoid)
 
-open import nakata.MusicalTraces
-open import nakata.Language
+open import work.MusicalTraces
+open import work.Language
 
 open Trace₁
 
-module nakata.BigRel where
+module work.BigRel where
     mutual
         data exec : Stmt → State → Trace₁ → Set where
             execSkip : {st : State}

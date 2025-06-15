@@ -8,9 +8,9 @@ open import Relation.Binary.Definitions using (Reflexive; Symmetric; Transitive;
 open import Relation.Binary.PropositionalEquality using (_≡_; subst; subst₂) renaming (sym to eqSym; trans to eqTrans)
 import Level using (zero)
 
-open import nakata.Language
+open import work.Language
 
-module nakata.MusicalTraces where
+module work.MusicalTraces where
     data FiniteTrace : Set where
         tnil : State → FiniteTrace
         tcons : State → FiniteTrace → FiniteTrace

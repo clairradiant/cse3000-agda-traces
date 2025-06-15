@@ -10,12 +10,12 @@ open import Relation.Nullary using (contradiction)
 open import Size
 open import Codata.Sized.Thunk
 
-open import nakata.Language
-open import nakata.SizedTraces
+open import work.Language
+open import work.SizedTraces
 
 open Trace₄
 
-module nakata.BigRel4 where
+module work.BigRel4 where
     mutual
         data exec : Size → Stmt → State → Trace₄ ∞ → Set where
             execSkip : ∀ {i} {st : State}

@@ -15,7 +15,7 @@ Licensed under MIT
   - Trace definitions are located in `MusicalTraces.agda`, `GuardedTraces.agda`, and `SizedTraces.agda`.
   - Relational semantics and experimentation for each trace type can be found in `BigRel.agda` through `BigRel4.agda`.
   - An implementation of functional semantics for the musical trace implementation can be found in `BigFunct.agda`.
-- Additional examples for demonstrating limitations of coinduction in Agda are found in "example".
+- Additional examples for demonstrating limitations of coinduction in Agda are found in "examples".
 - Literate Agda files used for typesetting in the report can be found in the "latex" module.
 
 ## Working with the Code

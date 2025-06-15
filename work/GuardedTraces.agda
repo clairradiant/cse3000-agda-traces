@@ -14,9 +14,9 @@ open import Data.Sum
 open import Function.Base using (case_of_)
 open import Relation.Nullary using (contradiction)
 
-open import nakata.Language
+open import work.Language
 
-module nakata.GuardedTraces where
+module work.GuardedTraces where
     -- #############################
     -- # Coinductive Record Traces
     -- #############################

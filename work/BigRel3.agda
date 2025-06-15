@@ -13,13 +13,13 @@ open import Data.Maybe using (Maybe; nothing; just)
 open import Data.Product
 open import Data.Sum
 
-open import nakata.GuardedTraces
-open import nakata.Language
+open import work.GuardedTraces
+open import work.Language
 
 open Trace₃
 
 -- Note: Work on this was abandoned early on due to the difficulty of working with Trace₃, but the module is kept here for completeness.
-module nakata.BigRel3 where
+module work.BigRel3 where
     open Trace₃.Trace₃
 
     mutual

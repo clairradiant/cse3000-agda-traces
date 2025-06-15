@@ -7,9 +7,9 @@ open import Level using (zero)
 open import Size
 open import Codata.Sized.Thunk
 
-open import nakata.Language
+open import work.Language
 
-module nakata.SizedTraces where
+module work.SizedTraces where
     data FiniteTrace : Set where
         tnil : State → FiniteTrace
         tcons : State → FiniteTrace → FiniteTrace

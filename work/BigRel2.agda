@@ -12,12 +12,12 @@ open import Relation.Binary.Bundles using (Setoid)
 open import Data.Product
 open import Data.Empty
 
-open import nakata.GuardedTraces
-open import nakata.Language
+open import work.GuardedTraces
+open import work.Language
 
 open Trace₂
 
-module nakata.BigRel2 where
+module work.BigRel2 where
     open Trace₂.Trace₂
 
     mutual

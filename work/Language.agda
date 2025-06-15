@@ -6,7 +6,7 @@ open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc)
 open import Function.Base using (case_of_)
 
-module nakata.Language where
+module work.Language where
     Id : Set
     Id = ℕ
 

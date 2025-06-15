@@ -1,8 +1,8 @@
 {-# OPTIONS --guardedness #-}
 
-open import nakata.MusicalTraces
+open import work.MusicalTraces
 open Trace₁
-open import nakata.Language
+open import work.Language
 open import Data.Bool using (Bool; true; false)
 open import Codata.Musical.Notation
 open import Data.Nat using (ℕ; zero; suc; _<?_; _+_)
@@ -10,7 +10,8 @@ open import Function.Base using (case_of_)
 open import Relation.Nullary.Decidable
 
 -- Functional semantics of the language. Only implemented for Musical coinduction due to time constraints
-module nakata.BigFunct where
+-- Primarily useful at the beginning of the project for exploring the resulting trace from a program
+module work.BigFunct where
     loop : (State → Trace₁) → (State → Bool) → State → Trace₁
     loopseq : (State → Trace₁) → (State → Bool) → Trace₁ → Trace₁
 
