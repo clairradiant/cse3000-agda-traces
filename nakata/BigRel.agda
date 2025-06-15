@@ -16,14 +16,6 @@ open import nakata.Language
 open Trace₁
 
 module nakata.BigRel where
-    append : Trace₁ → Trace₁ → Trace₁
-    append (tnil x) t₂ = tcons x (♯ t₂)
-    append (tcons x t) t₂ = tcons x (♯ append (♭ t) t₂)
-
-    -- unwind : Trace₁ → State
-    -- unwind (tnil st) = st
-    -- unwind (tcons st t) = unwind (♭ t)
-
     mutual
         data exec : Stmt → State → Trace₁ → Set where
             execSkip : {st : State}
@@ -100,8 +92,8 @@ module nakata.BigRel where
                 (execseqCons _ _ _ (♯ execseqNil execSkip))
                 (execseqCons _ _ _ (♯ execseqNil exloopforever))
 
-        -- Proof tree of a program generating the naturals
-        -- As well as a proof the trace actually does this
+        -- Proof tree of a program generating the naturals (exloopincrementing)
+        -- As well as a proof the trace actually does this (incrementingAlwaysIncrements)
         module increasing where
             incrementingFrom : State → Trace₁
             incrementingFrom st = tcons st (♯ tcons st (♯ (incrementingFrom (next st))))
@@ -161,6 +153,10 @@ module nakata.BigRel where
 
         -- Proof tree of a program that loops twice, then exits
         module loopTwice where
+            append : Trace₁ → Trace₁ → Trace₁
+            append (tnil x) t₂ = tcons x (♯ t₂)
+            append (tcons x t) t₂ = tcons x (♯ append (♭ t) t₂)
+
             guardTest1 : Trace₁
             guardTest1 = tcons startState (♯ tnil startState)
 
@@ -191,7 +187,7 @@ module nakata.BigRel where
                     startState 
                     _ 
                     _ 
-                    (♯ execseqNil (execAssign (tcons (♯ tnil))))) 
+                    (♯ execseqNil (execAssign (tcons (♯ tnil)))))
 
                 (execseqCons 
                     startState 
@@ -236,25 +232,27 @@ module nakata.BigRel where
                     (execseqCons _ _ _ (♯ (execseqCons _ _ _ (♯ (execseqNil (execIfThenElseFalse _ _≡_.refl (execseqCons _ _ _ (♯ (execseqNil (execAssign (tcons (♯ tnil)))))))))))))))) 
                     
 
-            
+    -- Determinsm proof        
     mutual
-        execseqDeterministic₀ : {s : Stmt}
-            -- → ({st : State} {tr₁ tr₂ : Trace₁} → exec s st tr₁ → exec s st tr₂ → tr₁ ≈ tr₂) 
-            → ({tr₁ tr₂ tr₃ tr₄ : Trace₁} → tr₁ ≈ tr₂ → execseq s tr₁ tr₃ → execseq s tr₂ tr₄ → tr₃ ≈ tr₄)
-        execseqDeterministic₀ tnil              (execseqNil ex₁)         (execseqNil ex₂)         = execDeterministic ex₁ ex₂
+        execseqDeterministic₀ : {s : Stmt} → ({tr₁ tr₂ tr₃ tr₄ : Trace₁} → tr₁ ≈ tr₂ → execseq s tr₁ tr₃ → execseq s tr₂ tr₄ → tr₃ ≈ tr₄)
+        execseqDeterministic₀ tnil              (execseqNil ex₁)             (execseqNil ex₂)             = execDeterministic ex₁ ex₂
         execseqDeterministic₀ (tcons tr₁′≈tr₂′) (execseqCons _ _ _ tr₁⇒tr₃) (execseqCons _ _ _ tr₂⇒tr₄) = tcons (♯ execseqDeterministic₀ (♭ tr₁′≈tr₂′) (♭ tr₁⇒tr₃) (♭ tr₂⇒tr₄))
                 
         execWhileDeterministic₀ : {c : Expr} {b : Stmt} {st : State} {tr₁ tr₂ : Trace₁} → exec (Swhile c b) st tr₁ → exec (Swhile c b) st tr₂ → tr₁ ≈ tr₂
         execWhileDeterministic₀ (execWhileFalse _ _ tr₁≈result) (execWhileFalse _ _ tr₂≈result)                 = trans tr₁≈result (sym tr₂≈result)
         execWhileDeterministic₀ (execWhileFalse _ c＝false _)   (execWhileLoop _ _ c＝true _ _) rewrite c＝false = contradiction c＝true λ ()
         execWhileDeterministic₀ (execWhileLoop _ _ c＝true _ _) (execWhileFalse _ c＝false _)   rewrite c＝true  = contradiction c＝false λ ()
-        execWhileDeterministic₀ {c} {b} (execWhileLoop _ _ _ (execseqCons _ _ _ x₁) (execseqCons _ _ tr′ x)) (execWhileLoop _ _ _ (execseqCons _ _ _ x₄) (execseqCons _ _ tr′₁ x₂)) = tcons (♯ execWhileDeterministic₁ (execseqDeterministic₀ refl (♭ x₁) (♭ x₄)) (♭ x) (♭ x₂))
+        execWhileDeterministic₀ {c} {b} 
+            (execWhileLoop _ _ _ (execseqCons _ _ _ exsnil₁) (execseqCons _ _ _ exsloop₁)) 
+            (execWhileLoop _ _ _ (execseqCons _ _ _ exsnil₂) (execseqCons _ _ _ exsloop₂)) 
+            = tcons (♯ execWhileDeterministic₁ (execseqDeterministic₀ refl (♭ exsnil₁) (♭ exsnil₂)) (♭ exsloop₁) (♭ exsloop₂))
             where
                 execWhileDeterministic₁ : {tr₁ tr₂ tr₃ tr₄ : Trace₁} → tr₁ ≈ tr₂ → execseq (Swhile c b) tr₁ tr₃ → execseq (Swhile c b) tr₂ tr₄ → tr₃ ≈ tr₄
                 execWhileDeterministic₁ tnil              (execseqNil ex₁)       (execseqNil ex₂)       = execWhileDeterministic₀ ex₁ ex₂
                 execWhileDeterministic₁ (tcons tr₁′≈tr₂′) (execseqCons _ _ _ exseq₁) (execseqCons _ _ _ exseq₂) = tcons (♯ (execWhileDeterministic₁ (♭ tr₁′≈tr₂′) (♭ exseq₁) (♭ exseq₂)))
 
         -- Observation: execWhileDeterministic₁ is necessary to "constrain" the execution path for the sake of guardedness.
+        -- Using execseqDeterministic₀ results in a termination checking failure.
         -- This is not necessary for sized, where I can just put everything for the while case in execDeterministic directly
 
         

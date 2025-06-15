@@ -1,13 +1,15 @@
 {-# OPTIONS --guardedness #-}
 
-open import Traces
-open import Language
+open import nakata.MusicalTraces
+open Trace₁
+open import nakata.Language
 open import Data.Bool using (Bool; true; false)
 open import Codata.Musical.Notation
 open import Data.Nat using (ℕ; zero; suc; _<?_; _+_)
 open import Function.Base using (case_of_)
 open import Relation.Nullary.Decidable
 
+-- Functional semantics of the language. Only implemented for Musical coinduction due to time constraints
 module nakata.BigFunct where
     loop : (State → Trace₁) → (State → Bool) → State → Trace₁
     loopseq : (State → Trace₁) → (State → Bool) → Trace₁ → Trace₁

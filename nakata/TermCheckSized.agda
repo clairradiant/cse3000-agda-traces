@@ -3,6 +3,7 @@
 open import Size
 open import Codata.Sized.Thunk
 
+-- Example module showing sized types do not constrain definitions in the same way as guardedness (see TermCheck.agda)
 module nakata.TermCheckSized where
     data Coℕ (i : Size) : Set where
         zero : Coℕ i
@@ -16,6 +17,3 @@ module nakata.TermCheckSized where
 
     infOk : ∀ {i} → Coℕ i
     infOk = id (suc (λ where .force → infOk))
-
-    
-

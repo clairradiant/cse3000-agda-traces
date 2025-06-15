@@ -3,6 +3,7 @@
 open import Codata.Musical.Notation
 open import Data.Nat
 
+-- Example module showing limitation of guardedness as a productivity condition
 module nakata.TermCheck where
     mutual
         data Coℕr : Set where
