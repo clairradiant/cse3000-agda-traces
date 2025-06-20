@@ -25,8 +25,8 @@ open import Function.Base using (case_of_)
 open import Relation.Nullary using (contradiction)
 open import Data.Nat
 
-open import nakata.Traces
-open import nakata.Language
+open import work.MusicalTraces
+open import work.Language
 
 open Trace₁
 
@@ -51,11 +51,11 @@ data _≈good_ : Coℕ → Coℕ → Set where
 
 \begin{code}
 data exec : Stmt → State → Trace₁ → Set where
-    execWhileFalse : {c : Expr} {st : State} {tr : Trace₁}
-        → (b : Stmt)
-        → isTrue (c st) ≡ false
-        → tr ≈ (tcons st (♯ tnil st))
-        → exec (Swhile c b) st tr
+  execWhileFalse : 
+    {c : Expr} {st : State} {tr : Trace₁} (b : Stmt)
+    → isTrue (c st) ≡ false
+    → tr ≈ (tcons st (♯ tnil st))
+    → exec (Swhile c b) st tr
 \end{code}
 
 

@@ -12,7 +12,7 @@ open import Codata.Musical.Notation
 open import Level
 open import Data.Nat
 
-module GStreams where
+module latex.GStreams where
 
 private variable
   a : Level

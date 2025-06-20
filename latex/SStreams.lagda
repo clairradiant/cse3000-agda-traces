@@ -6,7 +6,7 @@
 
 \begin{code}
 
-{-# OPTIONS --sized-types --no-termination-check #-}
+{-# OPTIONS --sized-types #-}
 
 open import Size
 open import Level

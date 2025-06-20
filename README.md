@@ -1,6 +1,6 @@
 # Infinite Traces for While in Agda
 
-This repository contains code for the report "TITLE" produced as a part of CSE3000 Research Project at TU Delft.
+This repository contains code for the report "Stuck in a (While) Loop" produced as a part of CSE3000 Research Project at TU Delft.
 
 The report can be found at LINK.
 
